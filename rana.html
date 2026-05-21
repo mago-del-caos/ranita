@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>Disección de Rana AR Interactiva</title>
+    <!-- Librerías de Realidad Aumentada (A-Frame y AR.js) -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        #ui-container {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 85%; max-width: 400px; background: rgba(0, 0, 0, 0.85);
+            color: white; padding: 15px; border-radius: 15px; z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center;
+        }
+        .btn {
+            background: #2196F3; border: none; color: white; padding: 10px 20px;
+            font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer;
+            margin-top: 10px; transition: background 0.3s;
+        }
+        .btn:hover { background: #0b7dda; }
+        #info-panel { font-size: 13px; margin-top: 8px; color: #bbb; min-height: 32px; }
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px;
+            z-index: 2000; font-weight: bold; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">Iniciando Cámara y AR... Apunta al marcador Hiro</div>
+
+    <!-- Contenedor de la Interfaz de Usuario (UI) -->
+    <div id="ui-container">
+        <h3 style="margin: 0 0 5px 0; color: #4CAF50;">Disección de Rana AR</h3>
+        <div id="phase-title"><b>Fase 1: Anatomía Externa</b></div>
+        <div id="info-panel">Usa el botón para avanzar en los cortes quirúrgicos.</div>
+        <button class="btn" id="action-btn">Realizar Incisión</button>
+    </div>
+
+    <!-- Escena de Realidad Aumentada -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+        
+        <!-- Componente de luces para ver bien los órganos -->
+        <a-entity light="type: ambient; intensity: 0.7;"></a-entity>
+        <a-entity light="type: directional; intensity: 0.6; position: 1 4 3"></a-entity>
+
+        <!-- Marcador Hiro (El código QR apuntará a activar este marcador) -->
+        <a-marker preset="hiro" id="frog-marker">
+            
+            <!-- Grupo Contenedor de la Rana (Escalada para encajar en el marcador) -->
+            <a-entity position="0 0 0" scale="0.8 0.8 0.8" rotation="-90 0 0">
+                
+                <!-- Bandeja de Disección -->
+                <a-box position="0 0 -0.05" width="2.2" height="1.6" depth="0.05" color="#e0e0e0"></a-box>
+                <a-box position="0 0 -0.02" width="2.3" height="1.7" depth="0.02" color="#b0bec5" open-ended="true"></a-box>
+
+                <!-- CAPA 1: PIEL EXTERIOR (Animada con opacidad/escala en las fases) -->
+                <a-ellipse id="layer-skin" position="0 0 0.05" radius-x="0.6" radius-y="0.8" color="#4CAF50" 
+                           animation="property: material.opacity; dur: 500; easing: linear; autoplay: false">
+                    <!-- Patas traseras estilizadas -->
+                    <a-triangle vertex-a="-0.5 -0.7 0" vertex-b="-0.8 -1.2 0" vertex-c="-0.3 -1 0" color="#388E3C"></a-triangle>
+                    <a-triangle vertex-a="0.5 -0.7 0" vertex-b="0.8 -1.2 0" vertex-c="0.3 -1 0" color="#388E3C"></a-triangle>
+                    <!-- Ojos -->
+                    <a-circle position="-0.25 0.6 0.02" radius="0.08" color="#000"></a-circle>
+                    <a-circle position="0.25 0.6 0.02" radius="0.08" color="#000"></a-circle>
+                </a-ellipse>
+
+                <!-- CAPA 2: PARED MUSCULAR (Se expone al retirar la piel) -->
+                <a-ellipse id="layer-muscle" position="0 0 0.04" radius-x="0.55" radius-y="0.75" color="#ff7675" visible="false">
+                    <!-- Línea de guía para el corte -->
+                    <a-line id="cut-line" start="0 -0.6 0.01" end="0 0.5 0.01" color="#ff0000" visible="false"></a-line>
+                </a-ellipse>
+
+                <!-- CAPA 3: ÓRGANOS INTERNOS -->
+                <a-entity id="layer-organs" visible="false">
+                    <!-- Silueta del fondo de la cavidad celómica -->
+                    <a-ellipse position="0 0 0.02" radius-x="0.55" radius-y="0.75" color="#2d3436"></a-ellipse>
+
+                    <!-- HÍGADO (Tres lóbulos, órgano grande) -->
+                    <a-circle id="organ-liver" position="0 0.1 0.03" radius="0.22" color="#631c1c" class="clickable">
+                        <a-circle position="-0.1 -0.05 0.01" radius="0.12" color="#4d1313"></a-circle>
+                    </a-circle>
+
+                    <!-- CORAZÓN (Animación mejorada de latido automático) -->
+                    <a-cone id="organ-heart" position="0 0.35 0.04" radius-bottom="0.08" height="0.15" color="#d63031" rotation="0 0 180"
+                            animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; dur: 400; loop: true; easing: easeInOutQuad">
+                    </a-cone>
+
+                    <!-- PULMONES (Izquierdo y Derecho, esponjososdetrás del corazón) -->
+                    <a-ellipse id="organ-lung-l" position="-0.2 0.3 0.03" radius-x="0.08" radius-y="0.16" color="#ff7675" rotation="15 0 0"></a-ellipse>
+                    <a-ellipse id="organ-lung-r" position="0.2 0.3 0.03" radius-x="0.08" radius-y="0.16" color="#ff7675" rotation="-15 0 0"></a-ellipse>
+
+                    <!-- ESTÓMAGO -->
+                    <a-ellipse id="organ-stomach" position="-0.18 -0.1 0.03" radius-x="0.12" radius-y="0.25" color="#ffeaa7" rotation="-20 0 0"></a-ellipse>
+
+                    <!-- INTESTINOS (Estructura enrollada) -->
+                    <a-entity id="organ-intestines" position="0.05 -0.3 0.03">
+                        <a-torus radius="0.12" radius-tubular="0.03" color="#74b9ff" arc="360"></a-torus>
+                        <a-torus position="0.08 0.08 0" radius="0.08" radius-tubular="0.025" color="#74b9ff" arc="360"></a-torus>
+                    </a-entity>
+                </a-entity>
+
+            </a-entity>
+        </a-marker>
+
+        <!-- Cámara del dispositivo con cursor virtual para interactuar en móviles sin toques físicos directos -->
+        <a-entity camera>
+            <a-cursor raycaster="objects: .clickable" material="color: #4CAF50; shader: flat" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"></a-cursor>
+        </a-entity>
+    </a-scene>
+
+    <!-- LÓGICA DE CONTROL DEL PROYECTO -->
+    <script>
+        // Ocultar pantalla de carga cuando el sistema AR detecte inicialización
+        window.addEventListener('camera-init', () => {
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        let currentPhase = 1;
+        
+        const btn = document.getElementById('action-btn');
+        const phaseTitle = document.getElementById('phase-title');
+        const infoPanel = document.getElementById('info-panel');
+
+        // Elementos 3D del modelo
+        const skin = document.getElementById('layer-skin');
+        const muscle = document.getElementById('layer-muscle');
+        const cutLine = document.getElementById('cut-line');
+        const organs = document.getElementById('layer-organs');
+
+        // Manejo de las fases del simulador
+        btn.addEventListener('click', () => {
+            if (currentPhase === 1) {
+                // Transición a Fase 2: Cortar la piel
+                phaseTitle.innerHTML = "<b>Fase 2: Incisión de la Piel</b>";
+                infoPanel.innerText = "Cortando tejido dérmico. Exponiendo los músculos del abdomen.";
+                btn.innerText = "Abrir Músculo";
+                
+                // Animación: Desvanecer la piel exterior
+                skin.setAttribute('animation', 'autoplay: true');
+                setTimeout(() => skin.setAttribute('visible', 'false'), 500);
+                
+                // Mostrar capa muscular y línea guía de corte
+                muscle.setAttribute('visible', 'true');
+                cutLine.setAttribute('visible', 'true');
+                currentPhase = 2;
+
+            } else if (currentPhase === 2) {
+                // Transición a Fase 3: Exponer Órganos
+                phaseTitle.innerHTML = "<b>Fase 3: Cavidad Interna Expuesta</b>";
+                infoPanel.innerText = "¡Cortes completados! El corazón está latiendo. Toca los órganos para analizarlos.";
+                btn.innerText = "Reiniciar Disección";
+                
+                // Ocultar músculos y abrir los órganos
+                muscle.setAttribute('visible', 'false');
+                organs.setAttribute('visible', 'true');
+                currentPhase = 3;
+
+            } else if (currentPhase === 3) {
+                // Reiniciar todo el bucle del proyecto
+                phaseTitle.innerHTML = "<b>Fase 1: Anatomía Externa</b>";
+                infoPanel.innerText = "Usa el botón para avanzar en los cortes quirúrgicos.";
+                btn.innerText = "Realizar Incisión";
+                
+                skin.setAttribute('visible', 'true');
+                skin.setAttribute('material', 'opacity', '1');
+                muscle.setAttribute('visible', 'false');
+                cutLine.setAttribute('visible', 'false');
+                organs.setAttribute('visible', 'false');
+                currentPhase = 1;
+            }
+        });
+
+        // Interactividad con los órganos (Click / Mirar fijamente con la retícula de la cámara)
+        document.getElementById('organ-liver').addEventListener('click', () => {
+            infoPanel.innerHTML = "<span style='color:#ff7675'><b>Hígado:</b></span> Órgano grande de 3 lóbulos. Produce bilis y purifica la sangre.";
+        });
+        
+        document.getElementById('organ-heart').addEventListener('click', () => {
+            infoPanel.innerHTML = "<span style='color:#ff7675'><b>Corazón (3 cámaras):</b></span> Consta de 2 aurículas y 1 ventrículo. Distribuye oxígeno activamente.";
+        });
+    </script>
+</body>
+</html>
